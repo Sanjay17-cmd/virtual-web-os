@@ -1,0 +1,72 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import "tailwindcss";
+
+/* ── Global Reset & Base ──────────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  /* OS color tokens */
+  --os-bg-primary:    rgba(10, 10, 22, 1);
+  --os-surface:       rgba(18, 18, 30, 0.85);
+  --os-border:        rgba(255, 255, 255, 0.08);
+  --os-text-primary:  rgba(255, 255, 255, 0.92);
+  --os-text-muted:    rgba(255, 255, 255, 0.45);
+  --os-accent:        #6ee7f7;
+  --os-accent-alt:    #8b5cf6;
+  --os-success:       #22c55e;
+  --os-warning:       #febc2e;
+  --os-danger:        #ff5f57;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+html, body, #root {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  color: var(--os-text-primary);
+  background: var(--os-bg-primary);
+}
+
+/* ── Scrollbar Styling ─────────────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 99px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+/* ── Button Reset ──────────────────────────────────────────────────────── */
+button {
+  cursor: pointer;
+  outline: none;
+  border: none;
+  background: transparent;
+  font-family: inherit;
+}
+button:focus-visible {
+  outline: 2px solid var(--os-accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ── Selection ─────────────────────────────────────────────────────────── */
+::selection {
+  background: rgba(110, 231, 247, 0.25);
+  color: #fff;
+}
