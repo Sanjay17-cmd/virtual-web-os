@@ -2,10 +2,8 @@
  * App.jsx
  * Global session state gatekeeper.
  * Manages the auth lifecycle: loading → locked → authenticated.
- * On login:
- *   1. Fetches / upserts the user's config row (public.user_configs)
- *   2. Fetches all available apps   (public.app_registry)
- *   3. Fetches user's installed apps (public.user_installed_apps)
+ * On login, fetches/upserts the user's config row from public.user_configs
+ * and hydrates useConfigStore before rendering the Desktop.
  */
 import { useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -14,7 +12,7 @@ import LockScreen from './components/LockScreen';
 import supabase from './lib/supabaseClient';
 import useConfigStore from './store/configStore';
 
-// Default config matching the Supabase schema contract
+// Default config row matching the Supabase schema contract
 const DEFAULT_CONFIG = {
   theme: 'dark',
   animations_enabled: true,
@@ -25,11 +23,12 @@ const DEFAULT_CONFIG = {
 function App() {
   // 'loading' | 'locked' | 'authenticated'
   const [authState, setAuthState] = useState('loading');
-  const { updateUserPrefs, setCurrentUser, fetchAppRegistry, fetchInstalledApps } = useConfigStore();
+  const { updateUserPrefs } = useConfigStore();
 
-  // ── Hydrate user config from Supabase ──────────────────────────────────────
+  // ── Hydrate user config from Supabase ───────────────────────────────────────
   const hydrateConfig = async (userId) => {
     if (!supabase) {
+      // Offline mode — apply defaults
       updateUserPrefs(DEFAULT_CONFIG);
       return;
     }
@@ -43,6 +42,7 @@ function App() {
       if (error) throw error;
 
       if (data) {
+        // Row exists — hydrate store with live DB values
         updateUserPrefs({
           theme:                   data.theme,
           animations_enabled:      data.animations_enabled,
@@ -50,6 +50,7 @@ function App() {
           ubuntu_sidebar_expanded: data.ubuntu_sidebar_expanded,
         });
       } else {
+        // No row yet — upsert defaults, then hydrate
         const defaults = { user_id: userId, ...DEFAULT_CONFIG };
         await supabase.from('user_configs').upsert(defaults);
         updateUserPrefs(DEFAULT_CONFIG);
@@ -60,20 +61,10 @@ function App() {
     }
   };
 
-  // ── Full login sequence: config + app registry + installed apps ────────────
-  const handleUserLogin = async (user) => {
-    setCurrentUser(user);
-    await hydrateConfig(user.id);
-    // Fetch in parallel — neither blocks the other
-    await Promise.all([
-      fetchAppRegistry(supabase),
-      fetchInstalledApps(supabase, user.id),
-    ]);
-  };
-
-  // ── Auth state listener ────────────────────────────────────────────────────
+  // ── Auth state listener ─────────────────────────────────────────────────────
   useEffect(() => {
     if (!supabase) {
+      // No Supabase — stay on lock screen (bypass available)
       setAuthState('locked');
       return;
     }
@@ -81,7 +72,7 @@ function App() {
     // Check initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
-        handleUserLogin(session.user).then(() => setAuthState('authenticated'));
+        hydrateConfig(session.user.id).then(() => setAuthState('authenticated'));
       } else {
         setAuthState('locked');
       }
@@ -91,10 +82,9 @@ function App() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (event === 'SIGNED_IN' && session?.user) {
-          await handleUserLogin(session.user);
+          await hydrateConfig(session.user.id);
           setAuthState('authenticated');
         } else if (event === 'SIGNED_OUT') {
-          setCurrentUser(null);
           setAuthState('locked');
         }
       }
@@ -103,16 +93,13 @@ function App() {
     return () => subscription.unsubscribe();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Mock / bypass login (dev only) ─────────────────────────────────────────
+  // ── Mock / bypass login ─────────────────────────────────────────────────────
   const handleMockLogin = () => {
-    // In offline mode: apply defaults, leave availableApps/installedApps
-    // as the static FALLBACK_REGISTRY seeded in configStore
     updateUserPrefs(DEFAULT_CONFIG);
-    setCurrentUser({ id: 'mock-user-dev', email: 'dev@virtualos.local' });
     setAuthState('authenticated');
   };
 
-  // ── Render ─────────────────────────────────────────────────────────────────
+  // ── Render ──────────────────────────────────────────────────────────────────
   if (authState === 'loading') {
     return (
       <div

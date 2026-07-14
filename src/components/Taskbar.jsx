@@ -1,30 +1,27 @@
 /**
  * Taskbar.jsx
  * Windows 11-style bottom-docked taskbar.
- * App shortcuts are now DYNAMIC — driven by installedApps from configStore.
- * System Tray includes a Drive Sync Status icon with 4 live states.
+ * System Tray now includes a Drive Sync Status icon that dynamically
+ * reflects the active upload state via useDriveStore:
+ *   idle    → cloud icon (dim)
+ *   syncing → spinning loader (indigo)
+ *   success → check-circle (green, auto-fades after 4s)
+ *   error   → alert-triangle (amber, with tooltip)
  */
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Monitor, FolderOpen, Terminal, Settings, FileText, Globe,
-  Wifi, Volume2, Battery, ChevronUp,
+  Wifi, Volume2, Battery, ChevronUp, LayoutGrid,
   Cloud, Loader2, CheckCircle2, AlertTriangle,
-  Store, Cpu, Palette, BarChart2, Code2, Music, Camera,
-  Mail, Calendar, Lock, Gamepad2, Map, ShoppingCart,
-  Video, BookOpen, Layers, Zap, Star, Package,
 } from 'lucide-react';
 import useOSStore from '../store/osStore';
-import useConfigStore from '../store/configStore';
+import { APP_REGISTRY } from '../store/osStore';
 import useDriveStore from '../store/driveStore';
 
-// ── Comprehensive icon_name → Lucide component map ───────────────────────────
-// Must cover every icon_name value that may come from public.app_registry
+// ── Icon map: icon_name string → Lucide component ────────────────────────────
 const ICON_MAP = {
   Monitor, FolderOpen, Terminal, Settings, FileText, Globe,
-  Store, Cpu, Palette, BarChart2, Code2, Music, Camera,
-  Mail, Calendar, Cloud, Lock, Gamepad2, Map, ShoppingCart,
-  Video, BookOpen, Layers, Zap, Star, Package,
 };
 
 // ── Drive Sync Tray Icon ─────────────────────────────────────────────────────
@@ -149,11 +146,26 @@ const TrayClock = () => {
   );
 };
 
+// ── Start button ──────────────────────────────────────────────────────────────
+const StartButton = ({ onClick }) => (
+  <motion.button
+    whileHover={{ scale: 1.1 }}
+    whileTap={{ scale: 0.93 }}
+    onClick={onClick}
+    className="flex items-center justify-center w-10 h-10 rounded-lg"
+    style={{
+      background: 'rgba(255,255,255,0.07)',
+      border: '1px solid rgba(255,255,255,0.1)',
+    }}
+    title="Start"
+  >
+    <LayoutGrid size={19} style={{ color: 'rgba(255,255,255,0.85)' }} />
+  </motion.button>
+);
 
+// ── Individual taskbar app button ─────────────────────────────────────────────
 const TaskbarApp = ({ app, isOpen, isMinimized, onClick }) => {
-  // Safely coerce icon_name — DB value may be null/undefined for new app rows
-  const iconKey     = typeof app.icon_name === 'string' ? app.icon_name : '';
-  const IconComponent = ICON_MAP[iconKey] ?? Package;
+  const IconComponent = ICON_MAP[app.icon_name] ?? Monitor;
 
   return (
     <motion.div className="relative flex flex-col items-center">
@@ -198,8 +210,7 @@ const TaskbarApp = ({ app, isOpen, isMinimized, onClick }) => {
 // ── Main Taskbar ──────────────────────────────────────────────────────────────
 const Taskbar = () => {
   const { windows, openWindow } = useOSStore();
-  // Subscribe to dynamic installed apps — re-renders whenever user installs/removes
-  const { installedApps } = useConfigStore();
+  const [startOpen, setStartOpen] = useState(false);
 
   return (
     <div
@@ -213,55 +224,25 @@ const Taskbar = () => {
         borderTop: '1px solid rgba(255,255,255,0.08)',
       }}
     >
-      {/* ── Left: App Store / Start Menu button — permanent, always visible ── */}
+      {/* ── Left: Start Button ── */}
       <div className="flex items-center gap-2">
-        {/*
-          This button is the guaranteed fallback entry point.
-          Even with zero installed apps the user can always open the App Store.
-        */}
-        <motion.button
-          id="start-menu-btn"
-          whileHover={{ scale: 1.08, y: -1 }}
-          whileTap={{ scale: 0.93 }}
-          onClick={() => openWindow('app-store')}
-          className="flex items-center justify-center w-10 h-10 rounded-lg"
-          style={{
-            background: 'linear-gradient(135deg, rgba(99,102,241,0.25), rgba(139,92,246,0.18))',
-            border: '1px solid rgba(99,102,241,0.35)',
-          }}
-          title="App Store"
-        >
-          <Store size={18} style={{ color: '#a5b4fc' }} />
-        </motion.button>
+        <StartButton onClick={() => setStartOpen(v => !v)} />
       </div>
 
-      {/* ── Center: Dynamic App Shortcuts (driven by installedApps) ── */}
+      {/* ── Center: App Shortcuts ── */}
       <div className="flex items-center gap-2 absolute left-1/2 -translate-x-1/2">
-        <AnimatePresence>
-          {installedApps.map(app => {
-            // app.slug is ALWAYS the authoritative key — never fall back to app.id
-            // (app.id is the app_registry PK uuid, not a slug string)
-            const slug = app.slug;
-            if (!slug) return null; // skip any malformed row without a slug
-            const win  = windows.find(w => w.id === slug);
-            return (
-              <motion.div
-                key={slug}
-                initial={{ opacity: 0, scale: 0.7, width: 0 }}
-                animate={{ opacity: 1, scale: 1, width: 'auto' }}
-                exit={{ opacity: 0, scale: 0.7, width: 0 }}
-                transition={{ type: 'spring', stiffness: 380, damping: 26 }}
-              >
-                <TaskbarApp
-                  app={app}
-                  isOpen={!!win}
-                  isMinimized={win?.isMinimized ?? false}
-                  onClick={() => openWindow(app.slug)}
-                />
-              </motion.div>
-            );
-          })}
-        </AnimatePresence>
+        {APP_REGISTRY.map(app => {
+          const win = windows.find(w => w.id === app.slug);
+          return (
+            <TaskbarApp
+              key={app.slug}
+              app={app}
+              isOpen={!!win}
+              isMinimized={win?.isMinimized ?? false}
+              onClick={() => openWindow(app.slug)}
+            />
+          );
+        })}
       </div>
 
       {/* ── Right: System Tray ── */}

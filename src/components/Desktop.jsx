@@ -11,30 +11,13 @@ import Taskbar from './Taskbar';
 import SystemDiagnostic from '../apps/SystemDiagnostic';
 import SettingsApp from '../apps/SettingsApp';
 import TextEditorApp from '../apps/TextEditorApp';
-import AppStoreApp from '../apps/AppStoreApp';
-import CalendarApp from '../apps/CalendarApp';
 
-// Inline placeholders for installable apps not yet fully built
-const ComingSoon = ({ name, icon }) => (
-  <div className="flex flex-col items-center justify-center h-full gap-4" style={{ color: 'rgba(255,255,255,0.3)' }}>
-    <span style={{ fontSize: 40 }}>{icon}</span>
-    <p className="text-sm font-semibold">{name}</p>
-    <p className="text-xs">Full implementation coming soon</p>
-  </div>
-);
-const NotesApp      = () => <ComingSoon name="Notes"      icon="📝" />;
-const CalculatorApp = () => <ComingSoon name="Calculator" icon="🔢" />;
-
-// Component registry — keys MUST exactly match the `slug` column in
-// public.app_registry and the componentName stored in each window object.
+// Registry that maps componentName slugs → actual React components
 const APP_COMPONENT_MAP = {
   'system-diagnostic': SystemDiagnostic,
   'settings':          SettingsApp,
-  'text-editor':       TextEditorApp,
-  'app-store':         AppStoreApp,
-  'calendar':          CalendarApp,
-  'notes':             NotesApp,
-  'calculator':        CalculatorApp,
+  'text-editor':        TextEditorApp,
+  // Future apps registered here
 };
 
 // Window position cascade — each new window opens offset from the previous
@@ -106,17 +89,10 @@ const Desktop = () => {
               zIndex={win.zIndex}
               defaultX={pos.x}
               defaultY={pos.y}
-              defaultWidth={
-                win.componentName === 'app-store' ? 860 :
-                win.componentName === 'settings'  ? 780 :
-                win.componentName === 'calendar'  ? 720 :
-                700
-              }
+              defaultWidth={win.componentName === 'settings' ? 780 : 700}
               defaultHeight={
-                win.componentName === 'app-store'    ? 590 :
                 win.componentName === 'settings'     ? 540 :
                 win.componentName === 'text-editor'  ? 540 :
-                win.componentName === 'calendar'     ? 480 :
                 490
               }
             >

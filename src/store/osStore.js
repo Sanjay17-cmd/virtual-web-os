@@ -5,103 +5,14 @@
  */
 import { create } from 'zustand';
 
-// ── App Registry ─────────────────────────────────────────────────────────────
-// is_native: true  → ships with the OS, pre-installed for every user
-// is_native: false → optional; user must install from the App Store
+// Registry of all available applications, mirroring public.app_registry schema
 export const APP_REGISTRY = [
-  // ── Native (pre-installed) ───────────────────────────────────────────────
-  {
-    name: 'System Diagnostic',
-    slug: 'system-diagnostic',
-    icon_name: 'Monitor',
-    developer_name: 'WebOS Core',
-    description: 'Real-time hardware stats: CPU, memory, disk, and network at a glance.',
-    category: 'Utilities',
-    is_native: true,
-  },
-  {
-    name: 'File Explorer',
-    slug: 'file-explorer',
-    icon_name: 'FolderOpen',
-    developer_name: 'WebOS Core',
-    description: 'Browse, manage, and organise your virtual file system with ease.',
-    category: 'Utilities',
-    is_native: true,
-  },
-  {
-    name: 'Terminal',
-    slug: 'terminal',
-    icon_name: 'Terminal',
-    developer_name: 'WebOS Core',
-    description: 'Full-featured shell emulator. Run commands, scripts, and more.',
-    category: 'Developer',
-    is_native: true,
-  },
-  {
-    name: 'Settings',
-    slug: 'settings',
-    icon_name: 'Settings',
-    developer_name: 'WebOS Core',
-    description: 'Customise your wallpaper, theme, animations, and display preferences.',
-    category: 'Utilities',
-    is_native: true,
-  },
-  {
-    name: 'Text Editor',
-    slug: 'text-editor',
-    icon_name: 'FileText',
-    developer_name: 'WebOS Core',
-    description: 'Distraction-free writing with Google Drive cloud sync. Save files directly to your Drive.',
-    category: 'Productivity',
-    is_native: true,
-  },
-  {
-    name: 'Browser',
-    slug: 'browser',
-    icon_name: 'Globe',
-    developer_name: 'WebOS Core',
-    description: 'Embedded web browser for quick lookups without leaving the OS.',
-    category: 'Utilities',
-    is_native: true,
-  },
-  {
-    name: 'App Store',
-    slug: 'app-store',
-    icon_name: 'Store',
-    developer_name: 'WebOS Core',
-    description: 'Discover, install, and manage apps for your Virtual OS.',
-    category: 'Utilities',
-    is_native: true,
-  },
-
-  // ── Installable (optional) ───────────────────────────────────────────────
-  {
-    name: 'Calendar',
-    slug: 'calendar',
-    icon_name: 'Calendar',
-    developer_name: 'WebOS Labs',
-    description: 'A clean monthly calendar with event tracking, reminders, and today highlights.',
-    category: 'Productivity',
-    is_native: false,
-  },
-  {
-    name: 'Notes',
-    slug: 'notes',
-    icon_name: 'BookOpen',
-    developer_name: 'WebOS Labs',
-    description: 'Quick-capture sticky notes. Colour-code, pin, and search your thoughts instantly.',
-    category: 'Productivity',
-    is_native: false,
-  },
-  {
-    name: 'Calculator',
-    slug: 'calculator',
-    icon_name: 'BarChart2',
-    developer_name: 'WebOS Labs',
-    description: 'Scientific calculator with history log, unit conversions, and formula memory.',
-    category: 'Utilities',
-    is_native: false,
-  },
+  { name: 'System Diagnostic', slug: 'system-diagnostic', icon_name: 'Monitor' },
+  { name: 'File Explorer',     slug: 'file-explorer',     icon_name: 'FolderOpen' },
+  { name: 'Terminal',          slug: 'terminal',           icon_name: 'Terminal' },
+  { name: 'Settings',          slug: 'settings',           icon_name: 'Settings' },
+  { name: 'Text Editor',       slug: 'text-editor',        icon_name: 'FileText' },
+  { name: 'Browser',           slug: 'browser',            icon_name: 'Globe' },
 ];
 
 // Map slugs to their human-readable title
