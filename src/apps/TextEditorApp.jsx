@@ -1,19 +1,32 @@
 /**
  * TextEditorApp.jsx
  * Distraction-free text editor with Google Drive cloud save.
- * Features: file name input, rich textarea, word/char count, Save to Cloud button.
+ * Features: file name input, extension selector, rich textarea, word/char count,
+ * Save to Cloud button — saves to WebOS_Data/text/ subfolder.
  * Drive sync state is broadcast through useDriveStore so the Taskbar tray can
  * reflect the upload status in real time.
  */
 import { useState, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  FileText, Cloud, CloudOff, Check, AlertTriangle,
-  Loader2, RotateCcw, Clock, Info,
+  FileText, Cloud, Check, AlertTriangle,
+  Loader2, RotateCcw, Clock, Info, ChevronDown,
 } from 'lucide-react';
 import { saveFileToDrive } from '../lib/driveService';
 import useDriveStore from '../store/driveStore';
 import supabase from '../lib/supabaseClient';
+
+// ── Supported file extensions ─────────────────────────────────────────────────
+const EXTENSIONS = [
+  { ext: 'txt',  label: '.txt',  desc: 'Plain Text'  },
+  { ext: 'md',   label: '.md',   desc: 'Markdown'    },
+  { ext: 'json', label: '.json', desc: 'JSON'        },
+  { ext: 'log',  label: '.log',  desc: 'Log File'    },
+  { ext: 'csv',  label: '.csv',  desc: 'CSV'         },
+  { ext: 'html', label: '.html', desc: 'HTML'        },
+  { ext: 'xml',  label: '.xml',  desc: 'XML'         },
+  { ext: 'yaml', label: '.yaml', desc: 'YAML'        },
+];
 
 // ── Word / character counter ─────────────────────────────────────────────────
 const useTextStats = (text) => {
@@ -28,7 +41,7 @@ const StatusBadge = ({ status, fileName }) => {
   const configs = {
     idle:    { icon: null,          label: '',                            color: 'transparent' },
     syncing: { icon: Loader2,       label: 'Saving to Drive…',            color: '#6366f1', spin: true },
-    success: { icon: Check,         label: `Saved as ${fileName}`,        color: '#22c55e' },
+    success: { icon: Check,         label: `Saved: ${fileName}`,          color: '#22c55e' },
     error:   { icon: AlertTriangle, label: 'Save failed — see tray',      color: '#f59e0b' },
   };
   const cfg = configs[status];
@@ -57,11 +70,67 @@ const StatusBadge = ({ status, fileName }) => {
   );
 };
 
+// ── Extension Dropdown ────────────────────────────────────────────────────────
+const ExtensionDropdown = ({ value, onChange }) => {
+  const [open, setOpen] = useState(false);
+  const current = EXTENSIONS.find(e => e.ext === value) ?? EXTENSIONS[0];
+
+  return (
+    <div className="relative flex-shrink-0">
+      <motion.button
+        whileHover={{ scale: 1.02 }}
+        whileTap={{ scale: 0.98 }}
+        onClick={() => setOpen(v => !v)}
+        className="flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-medium"
+        style={{
+          background: 'rgba(99,102,241,0.15)',
+          border: '1px solid rgba(99,102,241,0.3)',
+          color: '#a5b4fc',
+        }}
+      >
+        {current.label}
+        <ChevronDown size={11} />
+      </motion.button>
+
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: 4, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 4, scale: 0.97 }}
+            transition={{ duration: 0.15 }}
+            className="absolute bottom-8 left-0 rounded-xl overflow-hidden z-20"
+            style={{
+              background: 'rgba(12,12,28,0.98)',
+              border: '1px solid rgba(255,255,255,0.12)',
+              boxShadow: '0 16px 48px rgba(0,0,0,0.6)',
+              minWidth: 140,
+            }}
+          >
+            {EXTENSIONS.map(e => (
+              <button
+                key={e.ext}
+                onClick={() => { onChange(e.ext); setOpen(false); }}
+                className="w-full flex items-center justify-between px-3 py-2 text-xs transition-colors hover:bg-white/10"
+                style={{ color: value === e.ext ? '#a5b4fc' : 'rgba(255,255,255,0.65)' }}
+              >
+                <span className="font-mono font-medium">{e.label}</span>
+                <span style={{ color: 'rgba(255,255,255,0.3)' }}>{e.desc}</span>
+              </button>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
 // ── Main TextEditorApp ────────────────────────────────────────────────────────
 const TextEditorApp = () => {
-  const [fileName, setFileName] = useState('');
-  const [content,  setContent]  = useState('');
-  const [localErr, setLocalErr] = useState('');
+  const [fileName,  setFileName]  = useState('');
+  const [extension, setExtension] = useState('txt');
+  const [content,   setContent]   = useState('');
+  const [localErr,  setLocalErr]  = useState('');
 
   const { syncStatus, lastSynced, lastFileName, setSyncing, setSuccess, setError, resetStatus } = useDriveStore();
   const { chars, words, lines } = useTextStats(content);
@@ -76,7 +145,7 @@ const TextEditorApp = () => {
     if (!supabase) {
       setSyncing();
       await new Promise(r => setTimeout(r, 1200)); // simulate latency
-      const name = (fileName.trim() || 'Untitled') + '.txt';
+      const name = (fileName.trim() || 'Untitled') + '.' + extension;
       setSuccess(name);
       if (successTimer.current) clearTimeout(successTimer.current);
       successTimer.current = setTimeout(resetStatus, 4000);
@@ -91,7 +160,8 @@ const TextEditorApp = () => {
 
     setSyncing();
     try {
-      const result = await saveFileToDrive(fileName || 'Untitled', content);
+      // Save to WebOS_Data/text/ subfolder
+      const result = await saveFileToDrive(fileName || 'Untitled', content, extension, 'text');
       setSuccess(result.name);
       if (successTimer.current) clearTimeout(successTimer.current);
       successTimer.current = setTimeout(resetStatus, 4000);
@@ -99,7 +169,7 @@ const TextEditorApp = () => {
       console.error('[TextEditor] Save error:', err);
       setError(err.message);
     }
-  }, [fileName, content, setSyncing, setSuccess, setError, resetStatus]);
+  }, [fileName, extension, content, setSyncing, setSuccess, setError, resetStatus]);
 
   const isSyncing = syncStatus === 'syncing';
 
@@ -121,7 +191,7 @@ const TextEditorApp = () => {
             Text Editor
           </h1>
           <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.38)' }}>
-            Cloud-synced via Google Drive · WebOS_Data/
+            Cloud-synced via Google Drive · WebOS_Data/text/
           </p>
         </div>
 
@@ -129,7 +199,7 @@ const TextEditorApp = () => {
         <StatusBadge status={syncStatus} fileName={lastFileName} />
       </div>
 
-      {/* ── File name input ── */}
+      {/* ── File name + extension row ── */}
       <div className="space-y-2">
         <label
           htmlFor="editor-filename"
@@ -155,12 +225,8 @@ const TextEditorApp = () => {
             className="flex-1 bg-transparent text-sm outline-none placeholder:text-white/20"
             style={{ color: 'rgba(255,255,255,0.88)' }}
           />
-          <span
-            className="text-xs flex-shrink-0"
-            style={{ color: 'rgba(255,255,255,0.22)' }}
-          >
-            .txt
-          </span>
+          {/* Extension dropdown */}
+          <ExtensionDropdown value={extension} onChange={setExtension} />
         </div>
       </div>
 
@@ -188,10 +254,12 @@ const TextEditorApp = () => {
             className="w-full h-full resize-none bg-transparent text-sm outline-none p-4 leading-relaxed"
             style={{
               color: 'rgba(255,255,255,0.85)',
-              fontFamily: "'Inter', 'Consolas', monospace",
+              fontFamily: extension === 'md' || extension === 'html' || extension === 'json'
+                ? "'Consolas', 'Monaco', monospace"
+                : "'Inter', sans-serif",
               minHeight: 0,
             }}
-            spellCheck
+            spellCheck={extension === 'txt' || extension === 'md'}
           />
         </div>
       </div>

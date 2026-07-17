@@ -2,22 +2,48 @@
  * Desktop.jsx
  * The root OS shell. Renders a dynamic wallpaper bound to userPrefs.wallpaper_url,
  * all open WindowFrame instances, and the bottom-docked Taskbar.
+ * Only installed apps (from configStore.installedSlugs) can be launched.
  */
 import { AnimatePresence } from 'framer-motion';
 import useOSStore from '../store/osStore';
 import useConfigStore from '../store/configStore';
 import WindowFrame from './WindowFrame';
 import Taskbar from './Taskbar';
-import SystemDiagnostic from '../apps/SystemDiagnostic';
-import SettingsApp from '../apps/SettingsApp';
-import TextEditorApp from '../apps/TextEditorApp';
+import SystemDiagnostic  from '../apps/SystemDiagnostic';
+import SettingsApp       from '../apps/SettingsApp';
+import TextEditorApp     from '../apps/TextEditorApp';
+import AppStoreApp       from '../apps/AppStoreApp';
+import CalendarApp       from '../apps/CalendarApp';
+import VideoPlayerApp    from '../apps/VideoPlayerApp';
+import AudioPlayerApp    from '../apps/AudioPlayerApp';
+import FileExplorerApp   from '../apps/FileExplorerApp';
 
 // Registry that maps componentName slugs → actual React components
 const APP_COMPONENT_MAP = {
   'system-diagnostic': SystemDiagnostic,
   'settings':          SettingsApp,
-  'text-editor':        TextEditorApp,
-  // Future apps registered here
+  'text-editor':       TextEditorApp,
+  'app-store':         AppStoreApp,
+  'calendar':          CalendarApp,
+  'video-player':      VideoPlayerApp,
+  'audio-player':      AudioPlayerApp,
+  'file-explorer':     FileExplorerApp,
+  // Terminal and Browser — stub until implemented
+};
+
+// Default window sizes per slug
+const getWindowSize = (slug) => {
+  const sizes = {
+    'settings':        { w: 780, h: 540 },
+    'text-editor':     { w: 720, h: 540 },
+    'app-store':       { w: 820, h: 580 },
+    'calendar':        { w: 760, h: 580 },
+    'video-player':    { w: 900, h: 560 },
+    'audio-player':    { w: 680, h: 500 },
+    'file-explorer':   { w: 820, h: 540 },
+    'system-diagnostic':{ w: 720, h: 500 },
+  };
+  return sizes[slug] ?? { w: 700, h: 490 };
 };
 
 // Window position cascade — each new window opens offset from the previous
@@ -75,7 +101,8 @@ const Desktop = () => {
       <AnimatePresence>
         {windows.map((win, index) => {
           const AppComponent = APP_COMPONENT_MAP[win.componentName];
-          const pos = getDefaultPosition(index);
+          const pos  = getDefaultPosition(index);
+          const size = getWindowSize(win.componentName);
 
           if (!win.isOpen) return null;
 
@@ -86,15 +113,12 @@ const Desktop = () => {
               title={win.title}
               isMinimized={win.isMinimized}
               isMaximized={win.isMaximized}
+              tileLayout={win.tileLayout ?? null}
               zIndex={win.zIndex}
               defaultX={pos.x}
               defaultY={pos.y}
-              defaultWidth={win.componentName === 'settings' ? 780 : 700}
-              defaultHeight={
-                win.componentName === 'settings'     ? 540 :
-                win.componentName === 'text-editor'  ? 540 :
-                490
-              }
+              defaultWidth={size.w}
+              defaultHeight={size.h}
             >
               {AppComponent
                 ? <AppComponent />

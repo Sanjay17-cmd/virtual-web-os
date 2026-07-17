@@ -2,12 +2,20 @@
  * configStore.js
  * Local configuration state aligned to the Supabase schema contract.
  * Mirrors `public.user_configs` and `public.app_registry` table structures.
- * This will be replaced by live Supabase queries once the backend is connected.
+ * Manages installed apps with install/uninstall actions.
  */
 import { create } from 'zustand';
-import { APP_REGISTRY } from './osStore';
+import { SYSTEM_APPS } from './osStore';
 
-const useConfigStore = create((set) => ({
+// Default pre-installed app slugs (system apps always installed)
+const DEFAULT_INSTALLED = new Set([
+  'app-store',
+  'settings',
+  'system-diagnostic',
+  'text-editor',
+]);
+
+const useConfigStore = create((set, get) => ({
   // ─── User Preferences (mirrors public.user_configs) ──────────────────────
   userPrefs: {
     theme: 'dark',
@@ -16,8 +24,8 @@ const useConfigStore = create((set) => ({
     ubuntu_sidebar_expanded: true,
   },
 
-  // ─── Installed Applications (mirrors public.app_registry) ────────────────
-  installedApps: APP_REGISTRY,
+  // ─── Installed Apps: Set of installed app slugs ───────────────────────────
+  installedSlugs: new Set(DEFAULT_INSTALLED),
 
   // ─── Actions ─────────────────────────────────────────────────────────────
 
@@ -27,8 +35,29 @@ const useConfigStore = create((set) => ({
       userPrefs: { ...state.userPrefs, ...partial },
     })),
 
-  /** Replace the installed apps list (e.g., after fetching from Supabase) */
-  setInstalledApps: (apps) => set({ installedApps: apps }),
+  /** Check if an app is installed */
+  isInstalled: (slug) => get().installedSlugs.has(slug),
+
+  /** Install an app by slug */
+  installApp: (slug) =>
+    set(state => {
+      const next = new Set(state.installedSlugs);
+      next.add(slug);
+      return { installedSlugs: next };
+    }),
+
+  /** Uninstall an app by slug (cannot uninstall system apps) */
+  uninstallApp: (slug) => {
+    if (SYSTEM_APPS.has(slug)) return; // protect system apps
+    set(state => {
+      const next = new Set(state.installedSlugs);
+      next.delete(slug);
+      return { installedSlugs: next };
+    });
+  },
+
+  /** Get array of installed app slugs */
+  getInstalledSlugs: () => [...get().installedSlugs],
 }));
 
 export default useConfigStore;

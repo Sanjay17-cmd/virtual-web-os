@@ -9,7 +9,7 @@ import { motion } from 'framer-motion';
 import {
   Monitor, Cpu, Wifi, Layers, Palette, CheckCircle2,
 } from 'lucide-react';
-import useOSStore from '../store/osStore';
+import useOSStore, { APP_REGISTRY } from '../store/osStore';
 import useConfigStore from '../store/configStore';
 
 // ── Mini stat card ────────────────────────────────────────────────────────────
@@ -93,7 +93,8 @@ const SectionCard = ({ title, children }) => (
 // ── Main component ────────────────────────────────────────────────────────────
 const SystemDiagnostic = () => {
   const { windows, highestZIndex } = useOSStore();
-  const { userPrefs, installedApps } = useConfigStore();
+  const { userPrefs, installedSlugs } = useConfigStore();
+  const installedApps = APP_REGISTRY.filter(a => installedSlugs.has(a.slug));
 
   const [cpuUsage]  = useState(() => Math.floor(Math.random() * 40) + 15);
   const [memUsage]  = useState(() => Math.floor(Math.random() * 35) + 30);
