@@ -1,16 +1,10 @@
-/**
- * App.jsx
- * Global session state gatekeeper.
- * Manages the auth lifecycle: loading → locked → authenticated.
- * On login, fetches/upserts the user's config row from public.user_configs
- * and hydrates useConfigStore before rendering the Desktop.
- */
 import { useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import Desktop from './components/Desktop';
 import LockScreen from './components/LockScreen';
 import supabase from './lib/supabaseClient';
 import useConfigStore from './store/configStore';
+import { SYSTEM_APPS } from './store/osStore';
 
 // Default config row matching the Supabase schema contract
 const DEFAULT_CONFIG = {
@@ -23,12 +17,11 @@ const DEFAULT_CONFIG = {
 function App() {
   // 'loading' | 'locked' | 'authenticated'
   const [authState, setAuthState] = useState('loading');
-  const { updateUserPrefs } = useConfigStore();
+  const { updateUserPrefs, installApp } = useConfigStore();
 
   // ── Hydrate user config from Supabase ───────────────────────────────────────
   const hydrateConfig = async (userId) => {
     if (!supabase) {
-      // Offline mode — apply defaults
       updateUserPrefs(DEFAULT_CONFIG);
       return;
     }
@@ -42,7 +35,6 @@ function App() {
       if (error) throw error;
 
       if (data) {
-        // Row exists — hydrate store with live DB values
         updateUserPrefs({
           theme:                   data.theme,
           animations_enabled:      data.animations_enabled,
@@ -50,7 +42,6 @@ function App() {
           ubuntu_sidebar_expanded: data.ubuntu_sidebar_expanded,
         });
       } else {
-        // No row yet — upsert defaults, then hydrate
         const defaults = { user_id: userId, ...DEFAULT_CONFIG };
         await supabase.from('user_configs').upsert(defaults);
         updateUserPrefs(DEFAULT_CONFIG);
@@ -61,28 +52,63 @@ function App() {
     }
   };
 
+  // ── Hydrate installed apps from Supabase ────────────────────────────────────
+  // This is called on every login so that installs persist across sessions.
+  // System apps are always installed regardless (handled by configStore defaults).
+  const hydrateInstalledApps = async (userId) => {
+    if (!supabase) return;
+    try {
+      const { data, error } = await supabase
+        .from('user_installed_apps')
+        .select('slug')
+        .eq('user_id', userId);
+
+      if (error) throw error;
+
+      // Add each Supabase-persisted slug to the local store
+      (data ?? []).forEach(row => installApp(row.slug));
+
+      // Also ensure system apps are always written to Supabase
+      // (in case this is the user's first ever login)
+      const systemSlugs = [...SYSTEM_APPS];
+      const existingSlugs = new Set((data ?? []).map(r => r.slug));
+      const missing = systemSlugs.filter(s => !existingSlugs.has(s));
+      if (missing.length > 0) {
+        await supabase.from('user_installed_apps').upsert(
+          missing.map(slug => ({ user_id: userId, slug })),
+          { onConflict: 'user_id,slug', ignoreDuplicates: true }
+        );
+      }
+    } catch (err) {
+      console.error('[VirtualOS] Installed apps hydration error:', err);
+    }
+  };
+
   // ── Auth state listener ─────────────────────────────────────────────────────
   useEffect(() => {
     if (!supabase) {
-      // No Supabase — stay on lock screen (bypass available)
       setAuthState('locked');
       return;
     }
 
-    // Check initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
-        hydrateConfig(session.user.id).then(() => setAuthState('authenticated'));
+        Promise.all([
+          hydrateConfig(session.user.id),
+          hydrateInstalledApps(session.user.id),
+        ]).then(() => setAuthState('authenticated'));
       } else {
         setAuthState('locked');
       }
     });
 
-    // Listen for auth changes (login / logout / token refresh)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (event === 'SIGNED_IN' && session?.user) {
-          await hydrateConfig(session.user.id);
+          await Promise.all([
+            hydrateConfig(session.user.id),
+            hydrateInstalledApps(session.user.id),
+          ]);
           setAuthState('authenticated');
         } else if (event === 'SIGNED_OUT') {
           setAuthState('locked');
@@ -92,6 +118,7 @@ function App() {
 
     return () => subscription.unsubscribe();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
 
   // ── Mock / bypass login ─────────────────────────────────────────────────────
   const handleMockLogin = () => {

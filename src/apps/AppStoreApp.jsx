@@ -9,15 +9,16 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Store, Monitor, FolderOpen, Terminal, Settings, FileText, Globe,
   Calendar, Video, Headphones, Check, Download, Trash2, Star,
-  Search, Grid3X3, List, Package,
+  Search, Grid3X3, List, Package, Sparkles,
 } from 'lucide-react';
 import { APP_REGISTRY, SYSTEM_APPS } from '../store/osStore';
 import useConfigStore from '../store/configStore';
+import supabase from '../lib/supabaseClient';
 
 // ── Icon map ──────────────────────────────────────────────────────────────────
 const ICON_MAP = {
   Store, Monitor, FolderOpen, Terminal, Settings, FileText, Globe,
-  Calendar, Video, Headphones, Package,
+  Calendar, Video, Headphones, Package, Sparkles,
 };
 
 // ── Category accent colors ────────────────────────────────────────────────────
@@ -226,6 +227,37 @@ const AppStoreApp = () => {
   const [activeCategory, setActiveCategory] = useState('All');
   const { installedSlugs, installApp, uninstallApp } = useConfigStore();
 
+  // Persist install to Supabase AND update local store
+  const persistInstall = async (slug) => {
+    installApp(slug); // optimistic
+    if (!supabase) return;
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) return;
+      await supabase.from('user_installed_apps').upsert(
+        { user_id: session.user.id, slug },
+        { onConflict: 'user_id,slug', ignoreDuplicates: true }
+      );
+    } catch (err) {
+      console.error('[AppStore] Install persist failed:', err);
+    }
+  };
+
+  // Persist uninstall to Supabase AND update local store
+  const persistUninstall = async (slug) => {
+    uninstallApp(slug); // optimistic
+    if (!supabase) return;
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) return;
+      await supabase.from('user_installed_apps')
+        .delete()
+        .match({ user_id: session.user.id, slug });
+    } catch (err) {
+      console.error('[AppStore] Uninstall persist failed:', err);
+    }
+  };
+
   const categories = ['All', 'System', 'Productivity', 'Media'];
 
   const filtered = APP_REGISTRY.filter(app => {
@@ -322,8 +354,8 @@ const AppStoreApp = () => {
                   app={app}
                   installed={installedSlugs.has(app.slug)}
                   isSystem={SYSTEM_APPS.has(app.slug)}
-                  onInstall={installApp}
-                  onUninstall={uninstallApp}
+                  onInstall={persistInstall}
+                  onUninstall={persistUninstall}
                 />
               ))}
             </AnimatePresence>

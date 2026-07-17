@@ -12,7 +12,7 @@ import {
   Calendar, Video, Headphones, Store,
   Wifi, Volume2, VolumeX, Volume1, Battery, ChevronUp, LayoutGrid,
   Cloud, Loader2, CheckCircle2, AlertTriangle, Package,
-  Search, Power, User,
+  Search, Power, User, Sparkles,
 } from 'lucide-react';
 import useOSStore, { APP_REGISTRY } from '../store/osStore';
 import useConfigStore from '../store/configStore';
@@ -23,7 +23,7 @@ import supabase from '../lib/supabaseClient';
 // ── Icon map: icon_name string → Lucide component ─────────────────────────────
 const ICON_MAP = {
   Monitor, FolderOpen, Terminal, Settings, FileText, Globe,
-  Calendar, Video, Headphones, Store, Package,
+  Calendar, Video, Headphones, Store, Package, Sparkles,
 };
 
 // ── Volume Control (tray) ───–––––––––––––––––––––––––––––––––––––––––––––

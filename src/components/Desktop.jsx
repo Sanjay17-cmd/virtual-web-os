@@ -17,6 +17,7 @@ import CalendarApp       from '../apps/CalendarApp';
 import VideoPlayerApp    from '../apps/VideoPlayerApp';
 import AudioPlayerApp    from '../apps/AudioPlayerApp';
 import FileExplorerApp   from '../apps/FileExplorerApp';
+import GeminiApp         from '../apps/GeminiApp';
 
 // Registry that maps componentName slugs → actual React components
 const APP_COMPONENT_MAP = {
@@ -28,20 +29,22 @@ const APP_COMPONENT_MAP = {
   'video-player':      VideoPlayerApp,
   'audio-player':      AudioPlayerApp,
   'file-explorer':     FileExplorerApp,
+  'gemini-ai':         GeminiApp,
   // Terminal and Browser — stub until implemented
 };
 
 // Default window sizes per slug
 const getWindowSize = (slug) => {
   const sizes = {
-    'settings':        { w: 780, h: 540 },
-    'text-editor':     { w: 720, h: 540 },
-    'app-store':       { w: 820, h: 580 },
-    'calendar':        { w: 760, h: 580 },
-    'video-player':    { w: 900, h: 560 },
-    'audio-player':    { w: 680, h: 500 },
-    'file-explorer':   { w: 820, h: 540 },
-    'system-diagnostic':{ w: 720, h: 500 },
+    'settings':          { w: 780, h: 540 },
+    'text-editor':       { w: 720, h: 540 },
+    'app-store':         { w: 860, h: 600 },
+    'calendar':          { w: 760, h: 580 },
+    'video-player':      { w: 900, h: 560 },
+    'audio-player':      { w: 680, h: 500 },
+    'file-explorer':     { w: 820, h: 540 },
+    'system-diagnostic': { w: 720, h: 500 },
+    'gemini-ai':         { w: 860, h: 600 },
   };
   return sizes[slug] ?? { w: 700, h: 490 };
 };
