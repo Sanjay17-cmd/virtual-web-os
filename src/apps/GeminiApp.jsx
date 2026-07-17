@@ -210,7 +210,7 @@ const TypingIndicator = () => (
 // ── API Key Setup screen ──────────────────────────────────────────────────────
 const ApiKeySetup = ({ onSave, saving, error }) => {
   const [key, setKey]       = useState('');
-  const [model, setModel]   = useState('gemini-2.0-flash');
+  const [model, setModel]   = useState('gemini-1.5-flash');
   const [show, setShow]     = useState(false);
 
   return (
@@ -239,9 +239,9 @@ const ApiKeySetup = ({ onSave, saving, error }) => {
       <div className="w-full">
         <p className="text-xs font-medium mb-2" style={{ color: 'rgba(255,255,255,0.45)' }}>Model</p>
         <div className="flex gap-2">
-          {['gemini-2.0-flash', 'gemini-1.5-pro', 'gemini-1.5-flash'].map(m => (
+          {['gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-2.0-flash-exp'].map(m => (
             <button key={m} onClick={() => setModel(m)}
-              className="flex-1 py-2 px-2 rounded-xl text-[11px] font-medium transition-all"
+              className="flex-1 py-2 px-1 rounded-xl text-[10px] font-medium transition-all"
               style={{
                 background: model === m ? 'rgba(14,165,233,0.2)' : 'rgba(255,255,255,0.04)',
                 border: model === m ? '1px solid rgba(14,165,233,0.5)' : '1px solid rgba(255,255,255,0.08)',
@@ -352,7 +352,7 @@ const SessionsSidebar = ({ sessions, currentSessionId, onSelect, onNew, onDelete
 // ── Main GeminiApp ────────────────────────────────────────────────────────────
 const GeminiApp = () => {
   const [apiKey,       setApiKey]       = useState(null);   // null = not loaded yet
-  const [model,        setModel]        = useState('gemini-2.0-flash');
+  const [model,        setModel]        = useState('gemini-1.5-flash');
   const [keyLoading,   setKeyLoading]   = useState(true);
   const [keySaving,    setKeySaving]    = useState(false);
   const [keyError,     setKeyError]     = useState(null);
@@ -390,7 +390,7 @@ const GeminiApp = () => {
 
       if (keyRow) {
         setApiKey(keyRow.api_key);
-        setModel(keyRow.model ?? 'gemini-2.0-flash');
+        setModel(keyRow.model ?? 'gemini-1.5-flash');
       }
       setKeyLoading(false);
 
